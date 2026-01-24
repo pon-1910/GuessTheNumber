@@ -11,6 +11,7 @@ int main() {
 	int answer = std::rand() % 101; // 0から100までの乱数を生成
 	int guess;
 	int count = 0; // 試行回数をカウントする変数
+	int max_attempts = 10; // 最大試行回数
 
 	std::cout << " --- 数当てゲーム(0 ～ 100) --- " << std::endl;
 	std::cout << " 私が考えた数字を当てて見てね！ " << std::endl;
@@ -37,6 +38,12 @@ int main() {
 		} else {
 			std::cout << "正解です！おめでとうございます！" << std::endl;
 			std::cout << "あなたは " << count << " 回で正解しました。" << std::endl;
+			break; // 正解したらループを抜ける
+		}
+
+		// 最大試行回数のチェック
+		if (count >= max_attempts) {
+			std::cout << "残念！最大試行回数を超えました。正解は " << answer << " でした。" << std::endl;
 			break;
 		}
 	}
