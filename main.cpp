@@ -46,6 +46,19 @@ int main() {
 			std::cout << "残念！最大試行回数を超えました。正解は " << answer << " でした。" << std::endl;
 			break;
 		}
+
+		// ヒントの表示
+		if (count == 5) {
+			std::cout << "\n--- ヒント! ---" << std::endl;
+			if (answer < 10) {
+				std::cout << "この数字は1桁です（10の位は0です）。" << std::endl;
+			} else if (answer == 100) {
+				std::cout << "10の位と1の位は0です。" << std::endl;
+			} else {
+				std::cout << "10の位は" << (answer / 10) << "です。" << std::endl;
+			}
+			std::cout << "---------------\n" << std::endl;
+		}
 	}
 
 	return 0;
