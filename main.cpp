@@ -2,6 +2,8 @@
 #include <cstdlib> // rand, srand用
 #include <ctime>   // time用
 #include <limits>  // for numeric_limits
+#include <fstream>
+#include <string>
 
 using namespace std;
 
@@ -146,12 +148,13 @@ public:
 			}
 			else {
 				cout << "正解です！あなたは " << count << " 回で正解しました。\n";
+				saveScore(count); // スコア保存
 				break; // 勝利！
 			}
 
 			// 最大試行回数のチェック
 			if (count >= max_attempts) {
-				std::cout << "残念！終了です。正解は " << answer << " でした。\n";
+				cout << "残念！終了です。正解は " << answer << " でした。\n";
 				break; // 敗北
 			}
 
@@ -163,14 +166,46 @@ public:
 	}
 
 	// ランキング表示（未実装）
-	int getResultCount() const {
-		return count;
+	int showRanking()  {
+		ifstream ifs("ranking.txt");
+
+		if (!ifs) {
+			// ファイルがない（一度も遊んでいない）場合
+			cerr << "--- まだ記録がありません。あなたが最初のプレイヤーです！ ---\n";
+			return 0;
+		}
+
+		cout << "\n=== ランキング ===\n";
+		string line;
+		// ファイルから一行ずつ読み込んで、そのまま表示する
+		while (getline(ifs, line)) {
+			cout << line << endl;
+		}
+		cout << "==================\n\n";
+		ifs.close();
+	}
+
+	void saveScore(int score) {
+		// ranking.txt というファイルを「追記モード(app)」で開く
+		ofstream ofs("ranking.txt", ios::app);
+
+		if (!ofs) {
+			cerr << "ファイルを開けませんでした。\n";
+			return ;
+		}
+
+		// プレイヤー名(仮でPlayer)tとスコアに書き込む
+		ofs << "Player: " << score << " 回\n";
+
+		cout << "スコアを保存しました！\n";
+		ofs.close();
 	}
 };
 
 int main() {
 	// クラスを実態化(インスタンス化)して実行
 	NumberGuessGame game;
+	game.showRanking();
 	game.setup();
 	game.play();
 
