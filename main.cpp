@@ -4,18 +4,28 @@
 #include <limits>  // for numeric_limits
 #include <fstream>
 #include <string>
+#include <vector>
+#include <algorithm>
+#include <sstream>
 
 using namespace std;
+
+// スコアを扱うための構造体
+struct GameRecord {
+	string name;
+	int score;
+};
 
 class NumberGuessGame {
 private:
 	// ゲームの内部データ
-	int answer;       // 正解の数字
-	int max_range;    // 数字の範囲上限
-	int max_attempts; // 最大試行回数
-	int hint_timings; // ヒント表示のタイミング
-	int difficulty;   // 難易度レベル
-	int count;        // 試行回数
+	int answer;        // 正解の数字
+	int max_range;     // 数字の範囲上限
+	int max_attempts;  // 最大試行回数
+	int hint_timings;  // ヒント表示のタイミング
+	int difficulty;    // 難易度レベル
+	int count;         // 試行回数
+	string playerName; // プレイヤー名
 
 	// 内部だけで使うヒント表示処理
 	void showHint() {
@@ -88,6 +98,9 @@ public:
 
 	// 難易度設定と初期化
 	void setup() {
+		cout << "あなたの名前を入力してください\n>";
+		cin >> playerName;
+
 		cout << "難易度を選んでください（1:初級, 2:中級, 3:上級）\n>";
 		if (!(std::cin >> difficulty)) {
 			cin.clear();
@@ -165,24 +178,49 @@ public:
 		}
 	}
 
-	// ランキング表示（未実装）
-	int showRanking()  {
+	// ランキング表示
+	void showRanking() {
 		ifstream ifs("ranking.txt");
 
 		if (!ifs) {
 			// ファイルがない（一度も遊んでいない）場合
 			cerr << "--- まだ記録がありません。あなたが最初のプレイヤーです！ ---\n";
-			return 0;
+			return;
 		}
 
-		cout << "\n=== ランキング ===\n";
+		vector<GameRecord> records;
 		string line;
-		// ファイルから一行ずつ読み込んで、そのまま表示する
+		
+		// ファイルデータを読み込み、構造体にして vector に入れる
 		while (getline(ifs, line)) {
-			cout << line << endl;
+			// "Player: 5回"という文字列から数字を抽出する処理
+			size_t colonPos = line.find(": ");
+			size_t kaiPos = line.find("回");
+
+			if (colonPos != string::npos && kaiPos != string::npos) {
+				// 0文字目からコロンの前までが「名前」
+				string name = line.substr(0, colonPos);
+
+				// コロンの2文字後から「回」の前までが「スコア」
+				int score = stoi(line.substr(colonPos + 2, kaiPos - (colonPos + 2)));
+				records.push_back({ name, score });
+			}
+		}
+		ifs.close();
+
+		// スコアでソート（昇順）
+		sort(records.begin(), records.end(), [](const GameRecord& a, const GameRecord& b) {
+			return a.score < b.score;
+			});
+
+		// 上位5件を表示
+		cout << "\n=== ランキング ===\n";
+		int displayCount = min((int)records.size(), 5);
+		for (int i = 0; i < displayCount; ++i) {
+			cout << i + 1 << "位: " << records[i].name << " - " << records[i].score << " 回\n";
 		}
 		cout << "==================\n\n";
-		ifs.close();
+		
 	}
 
 	void saveScore(int score) {
@@ -191,11 +229,11 @@ public:
 
 		if (!ofs) {
 			cerr << "ファイルを開けませんでした。\n";
-			return ;
+			return;
 		}
 
-		// プレイヤー名(仮でPlayer)tとスコアに書き込む
-		ofs << "Player: " << score << " 回\n";
+		// プレイヤー名とスコアに書き込む
+		ofs << playerName << ": " << score << " 回\n";
 
 		cout << "スコアを保存しました！\n";
 		ofs.close();
