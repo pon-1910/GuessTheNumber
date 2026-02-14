@@ -3,6 +3,8 @@
 #include <vector>
 #include <algorithm>
 #include <ctime>
+#include <fstream>
+#include <sstream>
 
 using namespace std;
 
@@ -18,6 +20,7 @@ public:
 	string playerName; // プレイヤー名
 	string message;    // ゲームメッセージ
 	bool isGameOver;  // ゲームオーバーフラグ
+	bool isSaved;     // スコア保存フラグ
 
 	NumberGuessGame() {
 		srand(static_cast<unsigned int>(time(nullptr)));
@@ -26,6 +29,7 @@ public:
 		count = 0;
 		message = "数字当てゲームへようこそ！\n1から100の間の数字を予想してね！";
 		isGameOver = false;
+		isSaved = false;
 	}
 
 	void checkGuess(int guess) {
@@ -41,6 +45,18 @@ public:
 			isGameOver = true;
 		}
 	}
+
+	void saveScore() {
+		if (isGameOver && !isSaved) {
+
+			ofstream file("ranking.txt", ios::app);
+			if (file.is_open()) {
+				file << playerName << " " << count << endl;
+				file.close();
+				isSaved = true;
+			}
+		}
+	}
 };
 
 enum GameScene {
@@ -48,8 +64,33 @@ enum GameScene {
 	SCENE_GAME_MAIN   // ゲームメインシーン
 };
 
+struct ScoreRecord {
+	string name;
+	int count;
+};
+
+// ランキングを読み込む関数
+vector<ScoreRecord> loadRanking() {
+	vector<ScoreRecord> records;
+	ifstream file("ranking.txt");
+	string name;
+	int count;
+
+	while (file >> name >> count) {
+		records.push_back({ name, count });
+	}
+
+	// スコア（回数）が低い順にソート
+	sort(records.begin(), records.end(), [](const ScoreRecord& a, const ScoreRecord& b) {
+		return a.count < b.count;
+		});
+
+	return records;
+}
+
 // メイン関数
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
+	SetGraphMode(640, 600, 32); // 画面モード設定
 	ChangeWindowMode(TRUE); // ウィンドウモード
 
 	// DXライブラリの初期化
@@ -70,6 +111,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	unsigned int yellow = GetColor(255, 255, 0);  // 黄色
 
 	SetFontSize(20); // フォントサイズ設定
+
+	vector<ScoreRecord> rankingData; // ランキングデータ
 
 	while (ProcessMessage() == 0 && ClearDrawScreen() == 0 ) {
 		// シーンごとに切り替え
@@ -103,7 +146,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 				}
 			}
 		} else if (currentScene == SCENE_GAME_MAIN) {
-			DrawBox(50, 50, 590, 430, GetColor(50, 50, 50), TRUE); // 背景枠
+			DrawBox(0, 0, 640, 650, GetColor(50, 50, 50), TRUE); // 背景枠
 			
 			// タイトル中心寄せ（画面幅 640 想定）
 			char title[] = "=== 数当てゲーム ===";
@@ -131,18 +174,34 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 					int myInput = KeyInputNumber(100, 280, 200, 0, FALSE);
 					game.checkGuess(myInput); // クラスのロジックを呼び出す
 
-					while (CheckHitKey(KEY_INPUT_RETURN) != 0) {
+					/*while (CheckHitKey(KEY_INPUT_RETURN) != 0) {
 						// Enterキーが押されている間は待機（これでEnterの二重入力を防止）
 						ProcessMessage();
-					}
+					}*/
 				}
 			}
 			else {
+
 				// 500ミリ秒ごとに色を切り替える
 				if ((GetNowCount() / 500) % 2 == 0) {
 					DrawFormatString(150, 300, yellow, "＼( ^o^)／ 正解！おめでとう！ ＼(^o^ )／");
 				}
-				DrawString(100, 350, "Escキーで終了、Rキーでもう一度遊ぶ", white);
+
+				// ランキング表示
+				DrawString(150, 330, "--- 歴代ランキング (TOP 5) ---", yellow);
+
+				if (!game.isSaved) {
+					game.saveScore(); // スコア保存
+					rankingData = loadRanking(); // ランキングデータを読み込む
+					//DrawString(150, 360, "まだ記録がありません", white);
+				}
+
+				for (int i = 0; i < rankingData.size() && i < 5; i++) {
+					int y = 360 + (i * 25); //1行ごとに25ピクセル下にずらす
+					DrawFormatString(150, y, white, "%d位: %s - %d 回", i + 1, rankingData[i].name.c_str(), rankingData[i].count);
+				}
+
+				DrawString(100, 520, "Escキーで終了、Rキーでもう一度遊ぶ", white);
 
 				if (CheckHitKey(KEY_INPUT_R)) {
 					// プレイヤー名入力画面へ戻す準備
