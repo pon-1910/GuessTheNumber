@@ -15,7 +15,6 @@ public:
 	int max_range;     // 数字の範囲上限
 	int max_attempts;  // 最大試行回数
 	int hint_timings;  // ヒント表示のタイミング
-	int difficulty;    // 難易度レベル
 	int count;         // 試行回数
 	string playerName; // プレイヤー名
 	string message;    // ゲームメッセージ
@@ -60,8 +59,9 @@ public:
 };
 
 enum GameScene {
-	SCENE_NAME_INPUT, // プレイヤー名入力シーン
-	SCENE_GAME_MAIN   // ゲームメインシーン
+	SCENE_NAME_INPUT,		// プレイヤー名入力シーン
+	SCENE_GAME_MAIN,		// ゲームメインシーン
+	SCENE_DIFFICULTY_SELECT // 難易度選択シーン
 };
 
 struct ScoreRecord {
@@ -105,6 +105,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 	char inputName[64] = ""; // プレイヤー名入力用バッファ
 	int inputHandle = -1;    // 入力ボックスの完了番号
+	int cursor = 0; // 初期カーソル位置 0:初級, 1:中級, 2:上級
+	int nowKey = 0;
+	int oldKey, edgeKey; // キー入力管理用
 
 	// 共通色
 	unsigned int white = GetColor(255, 255, 255); // 白色
@@ -115,6 +118,13 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	vector<ScoreRecord> rankingData; // ランキングデータ
 
 	while (ProcessMessage() == 0 && ClearDrawScreen() == 0 ) {
+
+		// キー入力状態の更新（全シーン共通）
+		oldKey = nowKey;
+		nowKey = GetJoypadInputState(DX_INPUT_KEY_PAD1);
+		if (CheckHitKey(KEY_INPUT_RETURN)) { nowKey |= PAD_INPUT_1; } // // EnterをPAD_INPUT_1として扱う
+		edgeKey = nowKey & ~oldKey; // ★「今押された瞬間」を抽出
+
 		// シーンごとに切り替え
 		if (currentScene == SCENE_NAME_INPUT) {
 			// プレイヤー名入力シーン
@@ -138,14 +148,48 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 				game.playerName = inputName;               // クラスにプレイヤー名をセット
 				DeleteKeyInput(inputHandle);               // 入力ボックスを削除
 				inputHandle = -1;                         // ハンドルをリセット
-				currentScene = SCENE_GAME_MAIN;            // ゲームメインシーンに切り替え
+				currentScene = SCENE_DIFFICULTY_SELECT;   // 次のシーンへ切り替え
 
 				while (CheckHitKey(KEY_INPUT_RETURN) != 0) {
 					// Enterキーが押されている間は待機（これでEnterの二重入力を防止）
 					ProcessMessage();
 				}
 			}
-		} else if (currentScene == SCENE_GAME_MAIN) {
+		} else if (currentScene == SCENE_DIFFICULTY_SELECT) {
+
+			DrawString(100, 100, "難易度を選択してください", yellow);
+			// キー入力処理
+			if (edgeKey & PAD_INPUT_UP)   { cursor = (cursor + 2) % 3; } // 上キーでカーソルを上に移動
+			if (edgeKey & PAD_INPUT_DOWN) { cursor = (cursor + 1) % 3; } // 下キーでカーソルを下に移動
+
+			// 選択肢の表示（選んでいるものだけ色を変える）
+			string menuItems[] = { "初級 (1-50)", "中級 (1-100)", "上級 (1-1000)" };
+			for (int i = 0; i < 3; i++) {
+				unsigned int color = (cursor == i) ? yellow : white;
+				string prefix = (cursor == i) ? "> " : "  ";
+				DrawFormatString(150, 150 + i * 30, color, "%s %s", prefix.c_str(), menuItems[i].c_str());
+			}
+
+			// 決定処理
+			if (edgeKey & PAD_INPUT_1) {  
+				// 難易度を反映
+				if (cursor == 0) { game.max_range = 50; }
+				if (cursor == 1) { game.max_range = 100; }
+				if (cursor == 2) { game.max_range = 1000; }
+
+				// ゲームの初級設定をやり直す
+				game.answer = rand() % game.max_range + 1;
+				game.message = "数字当てゲームへようこそ！\n1から" + to_string(game.max_range) + "の間の数字を予想してね！";
+				game.count = 0;
+				game.isGameOver = false;
+				game.isSaved = false;
+				currentScene = SCENE_GAME_MAIN; // ゲームメインシーンへ切り替え
+
+				// Enterキーが離されるまで待機（これをしないとメイン画面で即座に入力が始まってしまう）
+				while (CheckHitKey(KEY_INPUT_RETURN)) { ProcessMessage(); }
+			}
+
+		}else if (currentScene == SCENE_GAME_MAIN) {
 			DrawBox(0, 0, 640, 650, GetColor(50, 50, 50), TRUE); // 背景枠
 			
 			// タイトル中心寄せ（画面幅 640 想定）
@@ -169,15 +213,13 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 				DrawString(100, 250, "[Enter]キーを押して数字を入力してください", white);
 
 				// 入力処理
-				if (CheckHitKey(KEY_INPUT_RETURN)) {
+				if (edgeKey & PAD_INPUT_1) {
 					ScreenFlip(); // 入力前に画面反映
-					int myInput = KeyInputNumber(100, 280, 200, 0, FALSE);
+					int myInput = KeyInputNumber(100, 280, game.max_range, 1, FALSE);
 					game.checkGuess(myInput); // クラスのロジックを呼び出す
 
-					/*while (CheckHitKey(KEY_INPUT_RETURN) != 0) {
-						// Enterキーが押されている間は待機（これでEnterの二重入力を防止）
-						ProcessMessage();
-					}*/
+					// 入力後、Enterキーが離されるのを待つ
+					while (CheckHitKey(KEY_INPUT_RETURN)) { ProcessMessage(); }
 				}
 			}
 			else {
