@@ -117,6 +117,14 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 	vector<ScoreRecord> rankingData; // ランキングデータ
 
+	int seCursor = LoadSoundMem("cursor.mp3"); // カーソル移動音
+	int seDecide = LoadSoundMem("decide.mp3"); // 決定音
+	int seCorrect = LoadSoundMem("correct.mp3"); // 正解音
+	int bgnMain = LoadSoundMem("bgm.mp3"); // BGM
+
+	ChangeVolumeSoundMem(255 * 80 / 100, seCorrect); // 正解音の音量を調整
+	ChangeVolumeSoundMem(255 * 40 / 100, bgnMain); // BGMの音量を調整
+
 	while (ProcessMessage() == 0 && ClearDrawScreen() == 0 ) {
 
 		// キー入力状態の更新（全シーン共通）
@@ -159,8 +167,16 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 			DrawString(100, 100, "難易度を選択してください", yellow);
 			// キー入力処理
-			if (edgeKey & PAD_INPUT_UP)   { cursor = (cursor + 2) % 3; } // 上キーでカーソルを上に移動
-			if (edgeKey & PAD_INPUT_DOWN) { cursor = (cursor + 1) % 3; } // 下キーでカーソルを下に移動
+			if (edgeKey & PAD_INPUT_UP) {  // 上キーでカーソルを上に移動 
+				cursor = (cursor + 2) % 3; 
+				PlaySoundMem(seCursor, DX_PLAYTYPE_BACK); // カーソル移動音を再生
+			}
+
+			if (edgeKey & PAD_INPUT_DOWN) { // 下キーでカーソルを下に移動 
+				cursor = (cursor + 1) % 3;
+				PlaySoundMem(seCursor, DX_PLAYTYPE_BACK); // カーソル移動音を再生
+			} 
+			
 
 			// 選択肢の表示（選んでいるものだけ色を変える）
 			string menuItems[] = { "初級 (1-50)", "中級 (1-100)", "上級 (1-1000)" };
@@ -172,6 +188,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 			// 決定処理
 			if (edgeKey & PAD_INPUT_1) {  
+				PlaySoundMem(seDecide, DX_PLAYTYPE_BACK); // 決定音を再生
+
 				// 難易度を反映
 				if (cursor == 0) { game.max_range = 50; }
 				if (cursor == 1) { game.max_range = 100; }
@@ -184,6 +202,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 				game.isGameOver = false;
 				game.isSaved = false;
 				currentScene = SCENE_GAME_MAIN; // ゲームメインシーンへ切り替え
+
+				PlaySoundMem(bgnMain, DX_PLAYTYPE_LOOP); // BGMをループ再生
 
 				// Enterキーが離されるまで待機（これをしないとメイン画面で即座に入力が始まってしまう）
 				while (CheckHitKey(KEY_INPUT_RETURN)) { ProcessMessage(); }
@@ -218,6 +238,13 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 					int myInput = KeyInputNumber(100, 280, game.max_range, 1, FALSE);
 					game.checkGuess(myInput); // クラスのロジックを呼び出す
 
+					if (game.isGameOver) {
+						StopSoundMem(bgnMain); // BGMを停止
+						PlaySoundMem(seCorrect, DX_PLAYTYPE_BACK); // 正解音を再生
+					} else {
+						// 外れだった場合の効果音を入れる予定
+					}
+
 					// 入力後、Enterキーが離されるのを待つ
 					while (CheckHitKey(KEY_INPUT_RETURN)) { ProcessMessage(); }
 				}
@@ -246,6 +273,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 				DrawString(100, 520, "Escキーで終了、Rキーでもう一度遊ぶ", white);
 
 				if (CheckHitKey(KEY_INPUT_R)) {
+					PlaySoundMem(seDecide, DX_PLAYTYPE_BACK); // 決定音を再生
 					// プレイヤー名入力画面へ戻す準備
 					game = NumberGuessGame(); // ゲームオブジェクトをリセット
 					inputName[0] = '\0';  // 入力バッファをリセット
