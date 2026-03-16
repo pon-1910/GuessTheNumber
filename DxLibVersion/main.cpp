@@ -121,11 +121,15 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	int seDecide = LoadSoundMem("decide.mp3"); // 決定音
 	int seCorrect = LoadSoundMem("correct.mp3"); // 正解音
 	int bgnMain = LoadSoundMem("bgm.mp3"); // BGM
+	int bgGraph = LoadGraph("background.png"); // 背景画像
+	int imgClear = LoadGraph("clear.png"); // クリア画像
 
 	ChangeVolumeSoundMem(255 * 80 / 100, seCorrect); // 正解音の音量を調整
 	ChangeVolumeSoundMem(255 * 40 / 100, bgnMain); // BGMの音量を調整
 
 	while (ProcessMessage() == 0 && ClearDrawScreen() == 0 ) {
+
+		DrawGraph(0, 0, bgGraph, FALSE); // 背景画像を描画
 
 		// キー入力状態の更新（全シーン共通）
 		oldKey = nowKey;
@@ -210,7 +214,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 			}
 
 		}else if (currentScene == SCENE_GAME_MAIN) {
-			DrawBox(0, 0, 640, 650, GetColor(50, 50, 50), TRUE); // 背景枠
 			
 			// タイトル中心寄せ（画面幅 640 想定）
 			char title[] = "=== 数当てゲーム ===";
@@ -250,6 +253,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 				}
 			}
 			else {
+				DrawGraph((640 - 95) / 2, 200, imgClear, TRUE); // クリア画像を表示
 
 				// 500ミリ秒ごとに色を切り替える
 				if ((GetNowCount() / 500) % 2 == 0) {
