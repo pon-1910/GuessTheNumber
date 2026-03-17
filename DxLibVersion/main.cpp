@@ -96,6 +96,9 @@ vector<ScoreRecord> loadRanking() {
 
 // メイン関数
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
+	// DXライブラリのログ出力を取らないように設定
+	SetOutApplicationLogValidFlag(FALSE);
+
 	SetGraphMode(640, 600, 32); // 画面モード設定
 	ChangeWindowMode(TRUE); // ウィンドウモード
 
@@ -124,15 +127,15 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 	vector<ScoreRecord> rankingData; // ランキングデータ
 
-	int seCursor = LoadSoundMem("cursor.mp3"); // カーソル移動音
-	int seDecide = LoadSoundMem("decide.mp3"); // 決定音
-	int seCorrect = LoadSoundMem("correct.mp3"); // 正解音
-	int bgnMain = LoadSoundMem("bgm.mp3"); // BGM
-	int bgmMenu = LoadSoundMem("bgm_menu.mp3"); // メニューBGM
-	int gameOverSound = LoadSoundMem("gameover.mp3"); // ゲームオーバー音
-	int seWrong = LoadSoundMem("wrong.mp3"); // 外れ音
-	int bgGraph = LoadGraph("background.png"); // 背景画像
-	int imgClear = LoadGraph("clear.png"); // クリア画像
+	int seCursor = LoadSoundMem("sound/cursor.mp3"); // カーソル移動音
+	int seDecide = LoadSoundMem("sound/decide.mp3"); // 決定音
+	int seCorrect = LoadSoundMem("sound/correct.mp3"); // 正解音
+	int bgnMain = LoadSoundMem("sound/bgm.mp3"); // BGM
+	int bgmMenu = LoadSoundMem("sound/bgm_menu.mp3"); // メニューBGM
+	int gameOverSound = LoadSoundMem("sound/gameover.mp3"); // ゲームオーバー音
+	int seWrong = LoadSoundMem("sound/wrong.mp3"); // 外れ音
+	int bgGraph = LoadGraph("graph/background.png"); // 背景画像
+	int imgClear = LoadGraph("graph/clear.png"); // クリア画像
 
 	ChangeVolumeSoundMem(255 * 50 / 100, seCursor); // カーソル移動音の音量を調整
 	ChangeVolumeSoundMem(255 * 70 / 100, seCorrect); // 正解音の音量を調整
