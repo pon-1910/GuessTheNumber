@@ -128,11 +128,20 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	int seDecide = LoadSoundMem("decide.mp3"); // 決定音
 	int seCorrect = LoadSoundMem("correct.mp3"); // 正解音
 	int bgnMain = LoadSoundMem("bgm.mp3"); // BGM
+	int bgmMenu = LoadSoundMem("bgm_menu.mp3"); // メニューBGM
+	int gameOverSound = LoadSoundMem("gameover.mp3"); // ゲームオーバー音
+	int seWrong = LoadSoundMem("wrong.mp3"); // 外れ音
 	int bgGraph = LoadGraph("background.png"); // 背景画像
 	int imgClear = LoadGraph("clear.png"); // クリア画像
 
-	ChangeVolumeSoundMem(255 * 80 / 100, seCorrect); // 正解音の音量を調整
-	ChangeVolumeSoundMem(255 * 40 / 100, bgnMain); // BGMの音量を調整
+	ChangeVolumeSoundMem(255 * 50 / 100, seCursor); // カーソル移動音の音量を調整
+	ChangeVolumeSoundMem(255 * 70 / 100, seCorrect); // 正解音の音量を調整
+	ChangeVolumeSoundMem(255 * 50 / 100, bgnMain); // BGMの音量を調整
+	ChangeVolumeSoundMem(255 * 50 / 100, bgmMenu); // メニューBGMの音量を調整
+	ChangeVolumeSoundMem(255 * 50 / 100, gameOverSound); // ゲームオーバー音の音量を調整
+	ChangeVolumeSoundMem(255 * 70 / 100, seWrong); // 外れ音の音量を調整
+
+	PlaySoundMem(bgmMenu, DX_PLAYTYPE_LOOP); // メニューBGMを再生
 
 	while (ProcessMessage() == 0 && ClearDrawScreen() == 0 ) {
 
@@ -223,6 +232,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 				game.isSaved = false;
 				currentScene = SCENE_GAME_MAIN; // ゲームメインシーンへ切り替え
 
+				StopSoundMem(bgmMenu); // メニューBGMを停止
 				PlaySoundMem(bgnMain, DX_PLAYTYPE_LOOP); // BGMをループ再生
 
 				// Enterキーが離されるまで待機（これをしないとメイン画面で即座に入力が始まってしまう）
@@ -263,11 +273,15 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 					int myInput = KeyInputNumber(100, 300, game.max_range, 1, FALSE);
 					game.checkGuess(myInput); // クラスのロジックを呼び出す
 
-					if (game.isGameOver && !game.isFaild) {
+					if (game.isGameOver) {
 						StopSoundMem(bgnMain); // BGMを停止
-						PlaySoundMem(seCorrect, DX_PLAYTYPE_BACK); // 正解音を再生
+						if (game.isFaild) {
+							PlaySoundMem(gameOverSound, DX_PLAYTYPE_BACK); // ゲームオーバー音を再生
+						}else {
+							PlaySoundMem(seCorrect, DX_PLAYTYPE_BACK); // 正解音を再生
+						}
 					}else {
-						// 外れだった場合の効果音を入れる予定
+						PlaySoundMem(seWrong, DX_PLAYTYPE_BACK); // 外れ音を再生
 					}
 
 					// 入力後、Enterキーが離されるのを待つ
@@ -302,7 +316,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 				DrawString(100, 520, "Escキーで終了、Rキーでもう一度遊ぶ", white);
 
 				if (CheckHitKey(KEY_INPUT_R)) {
+					StopSoundMem(bgnMain); // BGMを停止
+					StopSoundMem(gameOverSound); // ゲームオーバー音を停止
+					StopSoundMem(seCorrect); // 正解音を停止
 					PlaySoundMem(seDecide, DX_PLAYTYPE_BACK); // 決定音を再生
+					PlaySoundMem(bgmMenu, DX_PLAYTYPE_LOOP); // メニューBGMをループ再生
 					// プレイヤー名入力画面へ戻す準備
 					game = NumberGuessGame(); // ゲームオブジェクトをリセット
 					inputName[0] = '\0';  // 入力バッファをリセット
