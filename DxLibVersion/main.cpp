@@ -11,43 +11,49 @@ using namespace std;
 class NumberGuessGame {
 public:
 	// ゲームの内部データ
-	int answer;        // 正解の数字
 	int max_range;     // 数字の範囲上限
+	int answer;        // 正解の数字
 	int max_attempts;  // 最大試行回数
 	int hint_timings;  // ヒント表示のタイミング
 	int count;         // 試行回数
 	string playerName; // プレイヤー名
 	string message;    // ゲームメッセージ
 	bool isGameOver;  // ゲームオーバーフラグ
+	bool isFaild;    // 失敗フラグ
 	bool isSaved;     // スコア保存フラグ
 
 	NumberGuessGame() {
 		srand(static_cast<unsigned int>(time(nullptr)));
 		max_range = 100;
 		answer = rand() % max_range + 1;
+		max_attempts = 10;
 		count = 0;
 		message = "数字当てゲームへようこそ！\n1から100の間の数字を予想してね！";
 		isGameOver = false;
 		isSaved = false;
+		isFaild = false;
 	}
 
 	void checkGuess(int guess) {
 		count++;
-		if (guess < answer) {
-			message = "もっと大きい数字だよ！";
-		}
-		else if (guess > answer) {
-			message = "もっと小さい数字だよ！";
-		}
-		else {
+		if (guess == answer) {
 			message = "正解！おめでとう！";
 			isGameOver = true;
+		}else {
+			if (guess < answer) {
+				message = "もっと大きい数字だよ！";
+			}else {
+				message = "もっと小さい数字だよ！";
+			}
+			if (count >= max_attempts) {
+				isGameOver = true;
+				isFaild = true;
+			}
 		}
 	}
-
+	
 	void saveScore() {
 		if (isGameOver && !isSaved) {
-
 			ofstream file("ranking.txt", ios::app);
 			if (file.is_open()) {
 				file << playerName << " " << count << endl;
@@ -112,6 +118,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	// 共通色
 	unsigned int white = GetColor(255, 255, 255); // 白色
 	unsigned int yellow = GetColor(255, 255, 0);  // 黄色
+	unsigned int red = GetColor(255, 0, 0);       // 赤色
 
 	SetFontSize(20); // フォントサイズ設定
 
@@ -195,9 +202,18 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 				PlaySoundMem(seDecide, DX_PLAYTYPE_BACK); // 決定音を再生
 
 				// 難易度を反映
-				if (cursor == 0) { game.max_range = 50; }
-				if (cursor == 1) { game.max_range = 100; }
-				if (cursor == 2) { game.max_range = 1000; }
+				if (cursor == 0) { 
+					game.max_range = 50;     // 初級は1-50
+					game.max_attempts = 10;  // 初級は10回まで
+				}
+				if (cursor == 1) { 
+					game.max_range = 100;   // 中級は1-100
+					game.max_attempts = 7;  // 中級は7回まで
+				}
+				if (cursor == 2) { 
+					game.max_range = 1000;  // 上級は1-1000
+					game.max_attempts = 10; // 上級は10回まで
+				}
 
 				// ゲームの初級設定をやり直す
 				game.answer = rand() % game.max_range + 1;
@@ -221,59 +237,68 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 			int titleX = (640 - titleWidth) / 2;
 			DrawString(titleX, 80, title, yellow);
 
-			// プレイヤー名/試行回数/ヒント
+			// プレイヤー名/試行回数
 			DrawFormatString(100, 110, GetColor(255, 255, 0), "プレイヤー: %s さん", game.playerName.c_str());
 			DrawFormatString(100, 150, white, "現在の試行回数: %d 回", game.count);
-			if (game.count == 0) {
-				DrawString(100, 190, game.message.c_str(), GetColor(100, 255, 100));
-			}
-			else {
-				DrawFormatString(100, 170, GetColor(100, 255, 100), "ヒント: %s", game.message.c_str());
-			}
 
 			// 入力案内/入力処理
 			if (!game.isGameOver) {
-				DrawString(100, 250, "[Enter]キーを押して数字を入力してください", white);
+				// 残り回数
+				int remaining = game.max_attempts - game.count;
+				unsigned int countColor = (remaining <= 3) ? red : white; // 残り2回を切ったら赤色にする
+				DrawFormatString(100, 180, countColor, "残り回数: %d / %d 回", remaining, game.max_attempts);
+
+				// ヒント表示
+				if (game.count == 0) {
+					DrawString(100, 210, game.message.c_str(), GetColor(100, 255, 100));
+				}else {
+					DrawFormatString(100, 210, GetColor(100, 255, 100), "ヒント: %s", game.message.c_str());
+				}
+
+				DrawString(100, 270, "[Enter]キーを押して数字を入力してください", white);
 
 				// 入力処理
 				if (edgeKey & PAD_INPUT_1) {
 					ScreenFlip(); // 入力前に画面反映
-					int myInput = KeyInputNumber(100, 280, game.max_range, 1, FALSE);
+					int myInput = KeyInputNumber(100, 300, game.max_range, 1, FALSE);
 					game.checkGuess(myInput); // クラスのロジックを呼び出す
 
-					if (game.isGameOver) {
+					if (game.isGameOver && !game.isFaild) {
 						StopSoundMem(bgnMain); // BGMを停止
 						PlaySoundMem(seCorrect, DX_PLAYTYPE_BACK); // 正解音を再生
-					} else {
+					}else {
 						// 外れだった場合の効果音を入れる予定
 					}
 
 					// 入力後、Enterキーが離されるのを待つ
 					while (CheckHitKey(KEY_INPUT_RETURN)) { ProcessMessage(); }
 				}
-			}
-			else {
-				DrawGraph((640 - 95) / 2, 200, imgClear, TRUE); // クリア画像を表示
+			}else {
+				if (game.isFaild) {
+					DrawFormatString(150, 180, red, "GAME OVER...");
+					DrawFormatString(150, 210, red, "正解は %d でした", game.answer);
+				}else {
+					DrawGraph((640 - 95) / 2, 200, imgClear, TRUE); // クリア画像を表示
 
-				// 500ミリ秒ごとに色を切り替える
-				if ((GetNowCount() / 500) % 2 == 0) {
-					DrawFormatString(150, 300, yellow, "＼( ^o^)／ 正解！おめでとう！ ＼(^o^ )／");
+					// 500ミリ秒ごとに色を切り替える
+					if ((GetNowCount() / 500) % 2 == 0) {
+						DrawFormatString(150, 300, yellow, "＼( ^o^)／ 正解！おめでとう！ ＼(^o^ )／");
+					}
+
+					// ランキング表示
+					DrawString(150, 330, "--- 歴代ランキング (TOP 5) ---", yellow);
+
+					if (!game.isSaved) {
+						game.saveScore(); // スコア保存
+						rankingData = loadRanking(); // ランキングデータを読み込む
+						//DrawString(150, 360, "まだ記録がありません", white);
+					}
+
+					for (int i = 0; i < rankingData.size() && i < 5; i++) {
+						int y = 360 + (i * 25); //1行ごとに25ピクセル下にずらす
+						DrawFormatString(150, y, white, "%d位: %s - %d 回", i + 1, rankingData[i].name.c_str(), rankingData[i].count);
+					}
 				}
-
-				// ランキング表示
-				DrawString(150, 330, "--- 歴代ランキング (TOP 5) ---", yellow);
-
-				if (!game.isSaved) {
-					game.saveScore(); // スコア保存
-					rankingData = loadRanking(); // ランキングデータを読み込む
-					//DrawString(150, 360, "まだ記録がありません", white);
-				}
-
-				for (int i = 0; i < rankingData.size() && i < 5; i++) {
-					int y = 360 + (i * 25); //1行ごとに25ピクセル下にずらす
-					DrawFormatString(150, y, white, "%d位: %s - %d 回", i + 1, rankingData[i].name.c_str(), rankingData[i].count);
-				}
-
 				DrawString(100, 520, "Escキーで終了、Rキーでもう一度遊ぶ", white);
 
 				if (CheckHitKey(KEY_INPUT_R)) {
@@ -286,7 +311,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 			}
 
 		}
-
 		// 共通終了キー
 		if (CheckHitKey(KEY_INPUT_ESCAPE)) {
 			break;
